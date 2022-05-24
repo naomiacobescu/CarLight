@@ -1,0 +1,137 @@
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+entity Vtbird is
+ port ( CLOCK, RESET, LEFT, RIGHT, HAZ : in STD_LOGIC;
+ LIGHTS: buffer STD_LOGIC_VECTOR (1 to 6) );
+end;
+
+architecture Vtbird_arch of Vtbird is
+constant IDLE: STD_LOGIC_VECTOR (1 to 6) := "000000";
+constant L3 : STD_LOGIC_VECTOR (1 to 6) := "111000";
+constant L2 : STD_LOGIC_VECTOR (1 to 6) := "110000";
+constant L1 : STD_LOGIC_VECTOR (1 to 6) := "100000";
+constant R1 : STD_LOGIC_VECTOR (1 to 6) := "000001";
+constant R2 : STD_LOGIC_VECTOR (1 to 6) := "000011";
+constant R3 : STD_LOGIC_VECTOR (1 to 6) := "000111";
+constant LR3 : STD_LOGIC_VECTOR (1 to 6) := "111111";
+
+signal cy10hz : std_logic := '1';
+signal counter : integer range 0 to 10**7-1 := 0;
+
+begin
+
+--divizor 10 Hz 
+      -- cy10Hz
+      frequency_divider: process (reset, CLOCK) begin
+        if (reset = '1') then
+            cy10Hz <= '0';
+            counter <= 0;
+        elsif rising_edge(CLOCK) then
+            if (counter = 10**7-1) then
+                cy10Hz <= '1';
+                counter <= 0;
+            else
+                counter <= counter + 1;
+				cy10Hz <= '0';
+            end if;
+        end if;
+    end process;
+    -- CLOCKOUT <= cy10Hz;
+     
+ process (CLOCK)
+ begin
+ if RESET = '1' then 
+     LIGHTS <= IDLE; 
+ elsif CLOCK'event and CLOCK = '1' then
+ if cy10hz = '1' then
+ case LIGHTS is
+ when IDLE => if HAZ='1'  then LIGHTS <= LR3;
+   elsif LEFT='1' and RIGHT='1' then LIGHTS <= LR3;
+   elsif LEFT='1' and RIGHT = '0' then LIGHTS <= L1;
+   elsif RIGHT='1' and LEFT = '0' then LIGHTS <= R1;
+   else LIGHTS <= IDLE;
+   end if;
+ when L1 => if HAZ='1' then LIGHTS <= LR3; else LIGHTS <= L2; end if;
+ when L2 => if HAZ='1' then LIGHTS <= LR3; else LIGHTS <= L3; end if;
+ when L3 => LIGHTS <= IDLE;
+ when R1 => if HAZ='1' then LIGHTS <= LR3; else LIGHTS <= R2; end if;
+ when R2 => if HAZ='1' then LIGHTS <= LR3; else LIGHTS <= R3; end if;
+ when R3 => LIGHTS <= IDLE;
+ when LR3 => LIGHTS <= IDLE;
+ when others => LIGHTS <= IDLE;
+ end case;
+ end if;
+ end if;
+
+ end process;
+end Vtbird_arch;
+
+
+
+
+
+--testbench
+
+library IEEE;
+use IEEE.STD_LOGIC_1164.ALL;
+
+
+entity sim is
+ -- Port ( );
+end sim;
+
+architecture Behavioral of sim is
+
+component Vtbird is
+ port ( CLOCK, RESET, LEFT, RIGHT, HAZ: in STD_LOGIC;
+ LIGHTS: buffer STD_LOGIC_VECTOR (1 to 6);
+ CLOCKOUT: out STD_LOGIC );
+        
+end component Vtbird;   
+
+signal CLOCK: std_logic;
+signal LIGHTS: std_logic_vector (1 to 6);
+signal LEFT: std_logic;
+signal RIGHT: std_logic;
+signal HAZ: std_logic;
+signal CLOCKOUT : std_logic;
+
+begin
+
+uut: Vtbird 
+port map             ( RESET =>'0',
+                      LEFT=>LEFT,
+                      RIGHT=>RIGHT,
+                      HAZ=>HAZ,
+                      CLOCK=>CLOCK,
+                      LIGHTS=>LIGHTS,
+                      CLOCKOUT=>CLOCKOUT);
+process 
+begin
+ CLOCK<= '0'; wait for 5 ns;
+ CLOCK<= '1'; wait for 5 ns;
+ end process;
+ 
+ 
+-- LEFT <= '0' after 0 ns, '1' after 50 ns, '0' after 100 ns, '1' after 350 ns, '0' after 400 ns; 
+-- RIGHT <= '0' after 0 ns, '1' after 150 ns, '0' after 200 ns, '1' after 350 ns, '0' after 400 ns; 
+-- HAZ <= '0' after 0 ns, '1' after 250 ns, '0' after 300 ns; 
+ 
+ 
+process
+   begin
+  
+LEFT <= '1'; wait for 50 ns;
+LEFT <='0'; wait for   10 ns;
+
+RIGHT <= '1'; wait for 50 ns;
+RIGHT <='0'; wait for   10 ns;
+
+HAZ <= '1'; wait for 50 ns;
+HAZ <='0'; wait for   10 ns;
+
+
+  end process;
+
+end Behavioral;
